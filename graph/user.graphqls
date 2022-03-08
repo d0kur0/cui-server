@@ -8,6 +8,7 @@ type User {
     updatedAt: Time!
     deletedAt: Time!
     tokens: [UserToken]
+    services: [Service]
 }
 
 type UserToken {

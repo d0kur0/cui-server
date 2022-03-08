@@ -11,7 +11,7 @@ type Service struct {
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	Price       int       `json:"price"`
-	User        *User     `json:"user"`
+	UserID      string    `json:"userId"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 	DeletedAt   time.Time `json:"deletedAt"`
@@ -25,6 +25,7 @@ type User struct {
 	UpdatedAt time.Time    `json:"updatedAt"`
 	DeletedAt time.Time    `json:"deletedAt"`
 	Tokens    []*UserToken `json:"tokens"`
+	Services  []*Service   `json:"services"`
 }
 
 type UserToken struct {

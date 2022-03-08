@@ -3,8 +3,12 @@ type Service {
     name: String!
     description: String!
     price: Int!
-    user: User!
+    userId: ID!
     createdAt: Time!
     updatedAt: Time!
     deletedAt: Time!
+}
+
+type Query {
+    services(count: Int = 10): [Service]!
 }
