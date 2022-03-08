@@ -1,0 +1,10 @@
+type Service {
+    id: ID!
+    name: String!
+    description: String!
+    price: Int!
+    user: User!
+    createdAt: Time!
+    updatedAt: Time!
+    deletedAt: Time!
+}

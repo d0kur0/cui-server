@@ -1,0 +1,20 @@
+scalar Time
+
+type User {
+    id: ID!
+    name: String!
+    email: String!
+    createdAt: Time!
+    updatedAt: Time!
+    deletedAt: Time!
+    tokens: [UserToken]
+}
+
+type UserToken {
+    id: ID!
+    userId: ID!
+    token: String!
+    createdAt: Time!
+    updatedAt: Time!
+    deletedAt: Time!
+}
