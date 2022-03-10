@@ -54,3 +54,12 @@ models:
       - github.com/99designs/gqlgen/graphql.Int
       - github.com/99designs/gqlgen/graphql.Int64
       - github.com/99designs/gqlgen/graphql.Int32
+  Username:
+    model:
+      - github.com/d0kur0/cui-server/graph/scalars.Username
+  Email:
+    model:
+      - github.com/d0kur0/cui-server/graph/scalars.Email
+  Password:
+    model:
+      - github.com/d0kur0/cui-server/graph/scalars.Password
