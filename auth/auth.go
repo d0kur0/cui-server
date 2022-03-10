@@ -25,12 +25,7 @@ func Middleware() func(http.Handler) http.Handler {
 				return
 			}
 
-			user, err := database.ValidateAndGetUser(userToken)
-			if err != nil {
-				http.Error(w, "Invalid authentication token", http.StatusForbidden)
-				return
-			}
-
+			user := database.ValidateAndGetUser(userToken)
 			ctx := context.WithValue(r.Context(), userCtxKey, user)
 
 			r = r.WithContext(ctx)
