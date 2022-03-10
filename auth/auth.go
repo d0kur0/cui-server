@@ -27,7 +27,7 @@ func Middleware() func(http.Handler) http.Handler {
 
 			user, err := database.ValidateAndGetUser(userToken)
 			if err != nil {
-				http.Error(w, "Invalid cookie", http.StatusForbidden)
+				http.Error(w, "Invalid authentication token", http.StatusForbidden)
 				return
 			}
 
