@@ -5,8 +5,10 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/go-chi/chi/v5/middleware"
+
 	"github.com/d0kur0/cui-server/auth"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/d0kur0/cui-server/config"
 
@@ -25,6 +27,11 @@ func New() *Server {
 
 func (server *Server) Init(appConfig *config.Config) error {
 	router := chi.NewRouter()
+
+	router.Use(middleware.RequestID)
+	router.Use(middleware.RealIP)
+	router.Use(middleware.Logger)
+	router.Use(middleware.Recoverer)
 	router.Use(auth.Middleware())
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))
