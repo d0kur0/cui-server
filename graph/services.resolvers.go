@@ -5,21 +5,14 @@ package graph
 
 import (
 	"context"
-	"errors"
 
 	"github.com/d0kur0/cui-server/auth"
-
-	"github.com/d0kur0/cui-server/graph/generated"
 	"github.com/d0kur0/cui-server/graph/model"
 )
 
 func (r *queryResolver) Services(ctx context.Context, count *int) ([]*model.Service, error) {
-	_ = auth.ForContext(ctx)
+	user := auth.ForContext(ctx)
+	_ = user
 
-	return nil, errors.New("test")
+	return nil, nil
 }
-
-// Query returns generated.QueryResolver implementation.
-func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
-
-type queryResolver struct{ *Resolver }

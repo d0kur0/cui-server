@@ -1,14 +1,14 @@
 type Service {
-    id: ID!
+    id: Int!
     name: String!
     description: String!
     price: Int!
-    userId: ID!
+    userId: Int!
     createdAt: Time!
-    updatedAt: Time!
-    deletedAt: Time!
+    updatedAt: Time
+    deletedAt: Time
 }
 
-type Query {
+extend type Query {
     services(count: Int = 10): [Service]!
 }
