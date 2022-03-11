@@ -23,7 +23,7 @@ func (r *mutationResolver) SignIn(ctx context.Context, props model.SignInProps) 
 	var userModel database.UserModel
 	var userTokenModel database.UserTokenModel
 
-	signedUser, err := userModel.GetByEmailAndPassword(string(props.Email), string(props.Password))
+	signedUser, err := userModel.GetByEmailAndPassword(props.Email, props.Password)
 	if err != nil {
 		return nil, err
 	}
