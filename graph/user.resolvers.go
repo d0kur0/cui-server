@@ -6,7 +6,6 @@ package graph
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/d0kur0/cui-server/auth"
@@ -15,16 +14,33 @@ import (
 	"github.com/d0kur0/cui-server/graph/model"
 )
 
-func (r *mutationResolver) SignIn(ctx context.Context, props model.SignInProps) (*model.UserToken, error) {
+func (r *mutationResolver) SignIn(ctx context.Context, props model.SignInProps) (*model.SafeUser, error) {
 	user := auth.ForContext(ctx)
 	if user != nil {
 		return nil, errors.New("already signed")
 	}
 
-	return nil, nil
+	var userModel database.UserModel
+	var userTokenModel database.UserTokenModel
+
+	signedUser, err := userModel.GetByEmailAndPassword(string(props.Email), string(props.Password))
+	if err != nil {
+		return nil, err
+	}
+
+	createdToken, err := userTokenModel.Create(signedUser.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	var tokens []*model.UserToken
+	tokens = append(tokens, createdToken)
+	signedUser.Tokens = tokens
+
+	return userModel.GetSafeStruct(signedUser), nil
 }
 
-func (r *mutationResolver) SignUp(ctx context.Context, props model.SignUpProps) (*model.User, error) {
+func (r *mutationResolver) SignUp(ctx context.Context, props model.SignUpProps) (*model.SafeUser, error) {
 	user := auth.ForContext(ctx)
 	if user != nil {
 		return nil, errors.New("already signed")
@@ -36,7 +52,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, props model.SignUpProps) 
 	newUser := model.User{
 		Name:      props.Name,
 		Email:     props.Email,
-		Password:  string(props.Password),
+		Password:  props.Password,
 		CreatedAt: time.Now(),
 	}
 
@@ -54,11 +70,11 @@ func (r *mutationResolver) SignUp(ctx context.Context, props model.SignUpProps) 
 	tokens = append(tokens, createdToken)
 	newUser.Tokens = tokens
 
-	return &newUser, nil
+	return userModel.GetSafeStruct(&newUser), nil
 }
 
-func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
-	panic(fmt.Errorf("not implemented"))
+func (r *queryResolver) Users(ctx context.Context) ([]*model.SafeUser, error) {
+	return nil, errors.New("not implemented")
 }
 
 // Mutation returns generated.MutationResolver implementation.

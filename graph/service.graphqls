@@ -1,0 +1,32 @@
+type Service {
+    id: Int!
+    name: String!
+    description: String!
+    price: Int!
+    userId: Int!
+    createdAt: Time!
+    updatedAt: Time
+    deletedAt: Time
+}
+
+extend type Query {
+    services(count: Int = 10): [Service]!
+}
+
+input CreateServiceProps {
+    name: String!
+    description: String!
+    price: Int!
+}
+
+input UpdateServiceProps {
+    serviceId: Int!
+    name: String!
+    description: String!
+    price: Int!
+}
+
+extend type Mutation  {
+    createService(props: CreateServiceProps): Service!
+    updateService(props: UpdateServiceProps): Service!
+}

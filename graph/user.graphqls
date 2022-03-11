@@ -1,13 +1,21 @@
 scalar Time
-scalar Username
-scalar Email
-scalar Password
 
 type User {
     id: Int!
-    name: Username!
-    email: Email!
+    name: String!
+    email: String!
     password: String!
+    createdAt: Time!
+    updatedAt: Time
+    deletedAt: Time
+    tokens: [UserToken]
+    services: [Service]
+}
+
+type SafeUser {
+    id: Int!
+    name: String!
+    email: String!
     createdAt: Time!
     updatedAt: Time
     deletedAt: Time
@@ -25,21 +33,21 @@ type UserToken {
 }
 
 type Query {
-    users: [User]
+    users: [SafeUser]
 }
 
 input SignInProps {
-    email: Email!
-    password: Password!
+    email: String!
+    password: String!
 }
 
 input SignUpProps {
-    name: Username!
-    email: Email!
-    password: Password!
+    name: String!
+    email: String!
+    password: String!
 }
 
 type Mutation {
-    signIn(props: SignInProps!): UserToken!
-    signUp(props: SignUpProps!): User!
+    signIn(props: SignInProps!): SafeUser!
+    signUp(props: SignUpProps!): SafeUser!
 }

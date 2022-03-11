@@ -14,7 +14,6 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
 	"github.com/d0kur0/cui-server/graph/model"
-	"github.com/d0kur0/cui-server/graph/scalars"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -46,13 +45,26 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Mutation struct {
-		SignIn func(childComplexity int, props model.SignInProps) int
-		SignUp func(childComplexity int, props model.SignUpProps) int
+		CreateService func(childComplexity int, props *model.CreateServiceProps) int
+		SignIn        func(childComplexity int, props model.SignInProps) int
+		SignUp        func(childComplexity int, props model.SignUpProps) int
+		UpdateService func(childComplexity int, props *model.UpdateServiceProps) int
 	}
 
 	Query struct {
 		Services func(childComplexity int, count *int) int
 		Users    func(childComplexity int) int
+	}
+
+	SafeUser struct {
+		CreatedAt func(childComplexity int) int
+		DeletedAt func(childComplexity int) int
+		Email     func(childComplexity int) int
+		ID        func(childComplexity int) int
+		Name      func(childComplexity int) int
+		Services  func(childComplexity int) int
+		Tokens    func(childComplexity int) int
+		UpdatedAt func(childComplexity int) int
 	}
 
 	Service struct {
@@ -89,11 +101,13 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	SignIn(ctx context.Context, props model.SignInProps) (*model.UserToken, error)
-	SignUp(ctx context.Context, props model.SignUpProps) (*model.User, error)
+	SignIn(ctx context.Context, props model.SignInProps) (*model.SafeUser, error)
+	SignUp(ctx context.Context, props model.SignUpProps) (*model.SafeUser, error)
+	CreateService(ctx context.Context, props *model.CreateServiceProps) (*model.Service, error)
+	UpdateService(ctx context.Context, props *model.UpdateServiceProps) (*model.Service, error)
 }
 type QueryResolver interface {
-	Users(ctx context.Context) ([]*model.User, error)
+	Users(ctx context.Context) ([]*model.SafeUser, error)
 	Services(ctx context.Context, count *int) ([]*model.Service, error)
 }
 
@@ -111,6 +125,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "Mutation.createService":
+		if e.complexity.Mutation.CreateService == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createService_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateService(childComplexity, args["props"].(*model.CreateServiceProps)), true
 
 	case "Mutation.signIn":
 		if e.complexity.Mutation.SignIn == nil {
@@ -136,6 +162,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.SignUp(childComplexity, args["props"].(model.SignUpProps)), true
 
+	case "Mutation.updateService":
+		if e.complexity.Mutation.UpdateService == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateService_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateService(childComplexity, args["props"].(*model.UpdateServiceProps)), true
+
 	case "Query.services":
 		if e.complexity.Query.Services == nil {
 			break
@@ -154,6 +192,62 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Users(childComplexity), true
+
+	case "SafeUser.createdAt":
+		if e.complexity.SafeUser.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.SafeUser.CreatedAt(childComplexity), true
+
+	case "SafeUser.deletedAt":
+		if e.complexity.SafeUser.DeletedAt == nil {
+			break
+		}
+
+		return e.complexity.SafeUser.DeletedAt(childComplexity), true
+
+	case "SafeUser.email":
+		if e.complexity.SafeUser.Email == nil {
+			break
+		}
+
+		return e.complexity.SafeUser.Email(childComplexity), true
+
+	case "SafeUser.id":
+		if e.complexity.SafeUser.ID == nil {
+			break
+		}
+
+		return e.complexity.SafeUser.ID(childComplexity), true
+
+	case "SafeUser.name":
+		if e.complexity.SafeUser.Name == nil {
+			break
+		}
+
+		return e.complexity.SafeUser.Name(childComplexity), true
+
+	case "SafeUser.services":
+		if e.complexity.SafeUser.Services == nil {
+			break
+		}
+
+		return e.complexity.SafeUser.Services(childComplexity), true
+
+	case "SafeUser.tokens":
+		if e.complexity.SafeUser.Tokens == nil {
+			break
+		}
+
+		return e.complexity.SafeUser.Tokens(childComplexity), true
+
+	case "SafeUser.updatedAt":
+		if e.complexity.SafeUser.UpdatedAt == nil {
+			break
+		}
+
+		return e.complexity.SafeUser.UpdatedAt(childComplexity), true
 
 	case "Service.createdAt":
 		if e.complexity.Service.CreatedAt == nil {
@@ -380,7 +474,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	{Name: "graph/services.graphqls", Input: `type Service {
+	{Name: "graph/service.graphqls", Input: `type Service {
     id: Int!
     name: String!
     description: String!
@@ -393,17 +487,43 @@ var sources = []*ast.Source{
 
 extend type Query {
     services(count: Int = 10): [Service]!
+}
+
+input CreateServiceProps {
+    name: String!
+    description: String!
+    price: Int!
+}
+
+input UpdateServiceProps {
+    serviceId: Int!
+    name: String!
+    description: String!
+    price: Int!
+}
+
+extend type Mutation  {
+    createService(props: CreateServiceProps): Service!
+    updateService(props: UpdateServiceProps): Service!
 }`, BuiltIn: false},
 	{Name: "graph/user.graphqls", Input: `scalar Time
-scalar Username
-scalar Email
-scalar Password
 
 type User {
     id: Int!
-    name: Username!
-    email: Email!
+    name: String!
+    email: String!
     password: String!
+    createdAt: Time!
+    updatedAt: Time
+    deletedAt: Time
+    tokens: [UserToken]
+    services: [Service]
+}
+
+type SafeUser {
+    id: Int!
+    name: String!
+    email: String!
     createdAt: Time!
     updatedAt: Time
     deletedAt: Time
@@ -421,23 +541,23 @@ type UserToken {
 }
 
 type Query {
-    users: [User]
+    users: [SafeUser]
 }
 
 input SignInProps {
-    email: Email!
-    password: Password!
+    email: String!
+    password: String!
 }
 
 input SignUpProps {
-    name: Username!
-    email: Email!
-    password: Password!
+    name: String!
+    email: String!
+    password: String!
 }
 
 type Mutation {
-    signIn(props: SignInProps!): UserToken!
-    signUp(props: SignUpProps!): User!
+    signIn(props: SignInProps!): SafeUser!
+    signUp(props: SignUpProps!): SafeUser!
 }
 `, BuiltIn: false},
 }
@@ -446,6 +566,21 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_createService_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *model.CreateServiceProps
+	if tmp, ok := rawArgs["props"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("props"))
+		arg0, err = ec.unmarshalOCreateServiceProps2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐCreateServiceProps(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["props"] = arg0
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_signIn_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -469,6 +604,21 @@ func (ec *executionContext) field_Mutation_signUp_args(ctx context.Context, rawA
 	if tmp, ok := rawArgs["props"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("props"))
 		arg0, err = ec.unmarshalNSignUpProps2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐSignUpProps(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["props"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateService_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *model.UpdateServiceProps
+	if tmp, ok := rawArgs["props"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("props"))
+		arg0, err = ec.unmarshalOUpdateServiceProps2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUpdateServiceProps(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -582,9 +732,9 @@ func (ec *executionContext) _Mutation_signIn(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.UserToken)
+	res := resTmp.(*model.SafeUser)
 	fc.Result = res
-	return ec.marshalNUserToken2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUserToken(ctx, field.Selections, res)
+	return ec.marshalNSafeUser2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐSafeUser(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_signUp(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -624,9 +774,93 @@ func (ec *executionContext) _Mutation_signUp(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.User)
+	res := resTmp.(*model.SafeUser)
 	fc.Result = res
-	return ec.marshalNUser2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
+	return ec.marshalNSafeUser2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐSafeUser(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_createService(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_createService_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateService(rctx, args["props"].(*model.CreateServiceProps))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Service)
+	fc.Result = res
+	return ec.marshalNService2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐService(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_updateService(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_updateService_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateService(rctx, args["props"].(*model.UpdateServiceProps))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Service)
+	fc.Result = res
+	return ec.marshalNService2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐService(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_users(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -656,9 +890,9 @@ func (ec *executionContext) _Query_users(ctx context.Context, field graphql.Coll
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*model.User)
+	res := resTmp.([]*model.SafeUser)
 	fc.Result = res
-	return ec.marshalOUser2ᚕᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
+	return ec.marshalOSafeUser2ᚕᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐSafeUser(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_services(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -772,6 +1006,274 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 	res := resTmp.(*introspection.Schema)
 	fc.Result = res
 	return ec.marshalO__Schema2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐSchema(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SafeUser_id(ctx context.Context, field graphql.CollectedField, obj *model.SafeUser) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SafeUser",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SafeUser_name(ctx context.Context, field graphql.CollectedField, obj *model.SafeUser) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SafeUser",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SafeUser_email(ctx context.Context, field graphql.CollectedField, obj *model.SafeUser) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SafeUser",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Email, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SafeUser_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.SafeUser) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SafeUser",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SafeUser_updatedAt(ctx context.Context, field graphql.CollectedField, obj *model.SafeUser) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SafeUser",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UpdatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SafeUser_deletedAt(ctx context.Context, field graphql.CollectedField, obj *model.SafeUser) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SafeUser",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DeletedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SafeUser_tokens(ctx context.Context, field graphql.CollectedField, obj *model.SafeUser) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SafeUser",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Tokens, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.UserToken)
+	fc.Result = res
+	return ec.marshalOUserToken2ᚕᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUserToken(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SafeUser_services(ctx context.Context, field graphql.CollectedField, obj *model.SafeUser) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SafeUser",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Services, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Service)
+	fc.Result = res
+	return ec.marshalOService2ᚕᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐService(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Service_id(ctx context.Context, field graphql.CollectedField, obj *model.Service) (ret graphql.Marshaler) {
@@ -1113,9 +1615,9 @@ func (ec *executionContext) _User_name(ctx context.Context, field graphql.Collec
 		}
 		return graphql.Null
 	}
-	res := resTmp.(scalars.Username)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNUsername2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋscalarsᚐUsername(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _User_email(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
@@ -1148,9 +1650,9 @@ func (ec *executionContext) _User_email(ctx context.Context, field graphql.Colle
 		}
 		return graphql.Null
 	}
-	res := resTmp.(scalars.Email)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNEmail2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋscalarsᚐEmail(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _User_password(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
@@ -2741,6 +3243,45 @@ func (ec *executionContext) ___Type_specifiedByURL(ctx context.Context, field gr
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputCreateServiceProps(ctx context.Context, obj interface{}) (model.CreateServiceProps, error) {
+	var it model.CreateServiceProps
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "name":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			it.Name, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "description":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			it.Description, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "price":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("price"))
+			it.Price, err = ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputSignInProps(ctx context.Context, obj interface{}) (model.SignInProps, error) {
 	var it model.SignInProps
 	asMap := map[string]interface{}{}
@@ -2754,7 +3295,7 @@ func (ec *executionContext) unmarshalInputSignInProps(ctx context.Context, obj i
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
-			it.Email, err = ec.unmarshalNEmail2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋscalarsᚐEmail(ctx, v)
+			it.Email, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -2762,7 +3303,7 @@ func (ec *executionContext) unmarshalInputSignInProps(ctx context.Context, obj i
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("password"))
-			it.Password, err = ec.unmarshalNPassword2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋscalarsᚐPassword(ctx, v)
+			it.Password, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -2785,7 +3326,7 @@ func (ec *executionContext) unmarshalInputSignUpProps(ctx context.Context, obj i
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-			it.Name, err = ec.unmarshalNUsername2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋscalarsᚐUsername(ctx, v)
+			it.Name, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -2793,7 +3334,7 @@ func (ec *executionContext) unmarshalInputSignUpProps(ctx context.Context, obj i
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
-			it.Email, err = ec.unmarshalNEmail2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋscalarsᚐEmail(ctx, v)
+			it.Email, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -2801,7 +3342,54 @@ func (ec *executionContext) unmarshalInputSignUpProps(ctx context.Context, obj i
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("password"))
-			it.Password, err = ec.unmarshalNPassword2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋscalarsᚐPassword(ctx, v)
+			it.Password, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateServiceProps(ctx context.Context, obj interface{}) (model.UpdateServiceProps, error) {
+	var it model.UpdateServiceProps
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "serviceId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceId"))
+			it.ServiceID, err = ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "name":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			it.Name, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "description":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			it.Description, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "price":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("price"))
+			it.Price, err = ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -2851,6 +3439,26 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "signUp":
 			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_signUp(ctx, field)
+			}
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, innerFunc)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "createService":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createService(ctx, field)
+			}
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, innerFunc)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "updateService":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateService(ctx, field)
 			}
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, innerFunc)
@@ -2944,6 +3552,95 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, innerFunc)
+
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var safeUserImplementors = []string{"SafeUser"}
+
+func (ec *executionContext) _SafeUser(ctx context.Context, sel ast.SelectionSet, obj *model.SafeUser) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, safeUserImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SafeUser")
+		case "id":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._SafeUser_id(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "name":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._SafeUser_name(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "email":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._SafeUser_email(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "createdAt":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._SafeUser_createdAt(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "updatedAt":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._SafeUser_updatedAt(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+		case "deletedAt":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._SafeUser_deletedAt(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+		case "tokens":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._SafeUser_tokens(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+		case "services":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._SafeUser_services(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
 
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -3663,16 +4360,6 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) unmarshalNEmail2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋscalarsᚐEmail(ctx context.Context, v interface{}) (scalars.Email, error) {
-	var res scalars.Email
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNEmail2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋscalarsᚐEmail(ctx context.Context, sel ast.SelectionSet, v scalars.Email) graphql.Marshaler {
-	return v
-}
-
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}) (int, error) {
 	res, err := graphql.UnmarshalInt(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3688,14 +4375,22 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 	return res
 }
 
-func (ec *executionContext) unmarshalNPassword2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋscalarsᚐPassword(ctx context.Context, v interface{}) (scalars.Password, error) {
-	var res scalars.Password
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
+func (ec *executionContext) marshalNSafeUser2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐSafeUser(ctx context.Context, sel ast.SelectionSet, v model.SafeUser) graphql.Marshaler {
+	return ec._SafeUser(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNPassword2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋscalarsᚐPassword(ctx context.Context, sel ast.SelectionSet, v scalars.Password) graphql.Marshaler {
-	return v
+func (ec *executionContext) marshalNSafeUser2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐSafeUser(ctx context.Context, sel ast.SelectionSet, v *model.SafeUser) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._SafeUser(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNService2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐService(ctx context.Context, sel ast.SelectionSet, v model.Service) graphql.Marshaler {
+	return ec._Service(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNService2ᚕᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐService(ctx context.Context, sel ast.SelectionSet, v []*model.Service) graphql.Marshaler {
@@ -3736,6 +4431,16 @@ func (ec *executionContext) marshalNService2ᚕᚖgithubᚗcomᚋd0kur0ᚋcuiᚑ
 	return ret
 }
 
+func (ec *executionContext) marshalNService2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐService(ctx context.Context, sel ast.SelectionSet, v *model.Service) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Service(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNSignInProps2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐSignInProps(ctx context.Context, v interface{}) (model.SignInProps, error) {
 	res, err := ec.unmarshalInputSignInProps(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3774,44 +4479,6 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 		}
 	}
 	return res
-}
-
-func (ec *executionContext) marshalNUser2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v model.User) graphql.Marshaler {
-	return ec._User(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *model.User) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	return ec._User(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNUserToken2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUserToken(ctx context.Context, sel ast.SelectionSet, v model.UserToken) graphql.Marshaler {
-	return ec._UserToken(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNUserToken2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUserToken(ctx context.Context, sel ast.SelectionSet, v *model.UserToken) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	return ec._UserToken(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNUsername2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋscalarsᚐUsername(ctx context.Context, v interface{}) (scalars.Username, error) {
-	var res scalars.Username
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNUsername2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋscalarsᚐUsername(ctx context.Context, sel ast.SelectionSet, v scalars.Username) graphql.Marshaler {
-	return v
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
@@ -4093,6 +4760,14 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
+func (ec *executionContext) unmarshalOCreateServiceProps2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐCreateServiceProps(ctx context.Context, v interface{}) (*model.CreateServiceProps, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputCreateServiceProps(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
 	if v == nil {
 		return nil, nil
@@ -4107,6 +4782,54 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	}
 	res := graphql.MarshalInt(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOSafeUser2ᚕᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐSafeUser(ctx context.Context, sel ast.SelectionSet, v []*model.SafeUser) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOSafeUser2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐSafeUser(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
+func (ec *executionContext) marshalOSafeUser2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐSafeUser(ctx context.Context, sel ast.SelectionSet, v *model.SafeUser) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SafeUser(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOService2ᚕᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐService(ctx context.Context, sel ast.SelectionSet, v []*model.Service) graphql.Marshaler {
@@ -4189,52 +4912,12 @@ func (ec *executionContext) marshalOTime2ᚖtimeᚐTime(ctx context.Context, sel
 	return res
 }
 
-func (ec *executionContext) marshalOUser2ᚕᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v []*model.User) graphql.Marshaler {
+func (ec *executionContext) unmarshalOUpdateServiceProps2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUpdateServiceProps(ctx context.Context, v interface{}) (*model.UpdateServiceProps, error) {
 	if v == nil {
-		return graphql.Null
+		return nil, nil
 	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalOUser2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUser(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	return ret
-}
-
-func (ec *executionContext) marshalOUser2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *model.User) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._User(ctx, sel, v)
+	res, err := ec.unmarshalInputUpdateServiceProps(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOUserToken2ᚕᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUserToken(ctx context.Context, sel ast.SelectionSet, v []*model.UserToken) graphql.Marshaler {

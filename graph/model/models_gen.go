@@ -4,9 +4,24 @@ package model
 
 import (
 	"time"
-
-	"github.com/d0kur0/cui-server/graph/scalars"
 )
+
+type CreateServiceProps struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Price       int    `json:"price"`
+}
+
+type SafeUser struct {
+	ID        int          `json:"id"`
+	Name      string       `json:"name"`
+	Email     string       `json:"email"`
+	CreatedAt time.Time    `json:"createdAt"`
+	UpdatedAt *time.Time   `json:"updatedAt"`
+	DeletedAt *time.Time   `json:"deletedAt"`
+	Tokens    []*UserToken `json:"tokens"`
+	Services  []*Service   `json:"services"`
+}
 
 type Service struct {
 	ID          int        `json:"id"`
@@ -20,26 +35,33 @@ type Service struct {
 }
 
 type SignInProps struct {
-	Email    scalars.Email    `json:"email"`
-	Password scalars.Password `json:"password"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type SignUpProps struct {
-	Name     scalars.Username `json:"name"`
-	Email    scalars.Email    `json:"email"`
-	Password scalars.Password `json:"password"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type UpdateServiceProps struct {
+	ServiceID   int    `json:"serviceId"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Price       int    `json:"price"`
 }
 
 type User struct {
-	ID        int              `json:"id"`
-	Name      scalars.Username `json:"name"`
-	Email     scalars.Email    `json:"email"`
-	Password  string           `json:"password"`
-	CreatedAt time.Time        `json:"createdAt"`
-	UpdatedAt *time.Time       `json:"updatedAt"`
-	DeletedAt *time.Time       `json:"deletedAt"`
-	Tokens    []*UserToken     `json:"tokens"`
-	Services  []*Service       `json:"services"`
+	ID        int          `json:"id"`
+	Name      string       `json:"name"`
+	Email     string       `json:"email"`
+	Password  string       `json:"password"`
+	CreatedAt time.Time    `json:"createdAt"`
+	UpdatedAt *time.Time   `json:"updatedAt"`
+	DeletedAt *time.Time   `json:"deletedAt"`
+	Tokens    []*UserToken `json:"tokens"`
+	Services  []*Service   `json:"services"`
 }
 
 type UserToken struct {
