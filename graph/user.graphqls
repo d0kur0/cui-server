@@ -41,5 +41,5 @@ input SignUpProps {
 
 type Mutation {
     signIn(props: SignInProps!): UserToken!
-    signUp(props: SignUpProps!): UserToken!
+    signUp(props: SignUpProps!): User!
 }

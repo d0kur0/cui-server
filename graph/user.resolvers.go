@@ -7,15 +7,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/d0kur0/cui-server/auth"
 	"github.com/d0kur0/cui-server/database"
 	"github.com/d0kur0/cui-server/graph/generated"
 	"github.com/d0kur0/cui-server/graph/model"
-	"github.com/segmentio/ksuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func (r *mutationResolver) SignIn(ctx context.Context, props model.SignInProps) (*model.UserToken, error) {
@@ -27,52 +24,37 @@ func (r *mutationResolver) SignIn(ctx context.Context, props model.SignInProps) 
 	return nil, nil
 }
 
-func (r *mutationResolver) SignUp(ctx context.Context, props model.SignUpProps) (*model.UserToken, error) {
+func (r *mutationResolver) SignUp(ctx context.Context, props model.SignUpProps) (*model.User, error) {
 	user := auth.ForContext(ctx)
 	if user != nil {
 		return nil, errors.New("already signed")
 	}
 
-	hashOfPassword, err := bcrypt.GenerateFromPassword([]byte(props.Password), 14)
-	if err != nil {
-		log.Printf("error on signUp bcrypt.GenerateFromPassword; %s", err)
-		return nil, errors.New("internal error")
-	}
+	var userModel database.UserModel
+	var userTokenModel database.UserTokenModel
 
 	newUser := model.User{
 		Name:      props.Name,
 		Email:     props.Email,
-		Password:  string(hashOfPassword),
+		Password:  string(props.Password),
 		CreatedAt: time.Now(),
 	}
 
-	db := database.GetDB()
-	userCreateResult := db.Create(&newUser)
-
-	if userCreateResult.Error != nil {
-		log.Printf("error on SignUp db.Create(user); %s", err)
-		return nil, errors.New("internal error")
-	}
-
-	tokenValue, err := ksuid.NewRandom()
+	createdUser, err := userModel.Create(newUser)
 	if err != nil {
-		log.Printf("error on SignUp ksuid.NewRandom; %s", err)
-		return nil, errors.New("internal error")
+		return nil, err
 	}
 
-	newToken := model.UserToken{
-		UserID:    newUser.ID,
-		Token:     tokenValue.String(),
-		CreatedAt: time.Now(),
+	createdToken, err := userTokenModel.Create(createdUser.ID)
+	if err != nil {
+		return nil, err
 	}
 
-	tokenCreateResult := db.Create(&newToken)
-	if tokenCreateResult.Error != nil {
-		log.Printf("error on SignUp db.Create(userToken); %s", err)
-		return nil, errors.New("internal error")
-	}
+	var tokens []*model.UserToken
+	tokens = append(tokens, createdToken)
+	newUser.Tokens = tokens
 
-	return &newToken, nil
+	return &newUser, nil
 }
 
 func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {

@@ -1,8 +1,10 @@
 package scalars
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/go-ozzo/ozzo-validation/is"
 
@@ -33,8 +35,14 @@ func (e *Email) UnmarshalGQL(v interface{}) error {
 
 // MarshalGQL implements the graphql.Marshaler interface
 func (e Email) MarshalGQL(w io.Writer) {
-	_, err := w.Write([]byte(e))
+	asJson, err := json.Marshal(e)
 	if err != nil {
+		log.Printf("error on Marshal email scalar type; %s", err)
+		return
+	}
+
+	if _, err = w.Write(asJson); err != nil {
+		log.Printf("error on write email scalar type; %s", err)
 		return
 	}
 }

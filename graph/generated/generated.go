@@ -90,7 +90,7 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	SignIn(ctx context.Context, props model.SignInProps) (*model.UserToken, error)
-	SignUp(ctx context.Context, props model.SignUpProps) (*model.UserToken, error)
+	SignUp(ctx context.Context, props model.SignUpProps) (*model.User, error)
 }
 type QueryResolver interface {
 	Users(ctx context.Context) ([]*model.User, error)
@@ -437,7 +437,7 @@ input SignUpProps {
 
 type Mutation {
     signIn(props: SignInProps!): UserToken!
-    signUp(props: SignUpProps!): UserToken!
+    signUp(props: SignUpProps!): User!
 }
 `, BuiltIn: false},
 }
@@ -624,9 +624,9 @@ func (ec *executionContext) _Mutation_signUp(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.UserToken)
+	res := resTmp.(*model.User)
 	fc.Result = res
-	return ec.marshalNUserToken2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUserToken(ctx, field.Selections, res)
+	return ec.marshalNUser2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_users(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3774,6 +3774,20 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNUser2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v model.User) graphql.Marshaler {
+	return ec._User(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *model.User) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._User(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNUserToken2githubᚗcomᚋd0kur0ᚋcuiᚑserverᚋgraphᚋmodelᚐUserToken(ctx context.Context, sel ast.SelectionSet, v model.UserToken) graphql.Marshaler {
