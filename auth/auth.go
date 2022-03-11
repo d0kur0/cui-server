@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/d0kur0/cui-server/graph/model"
-
 	"github.com/d0kur0/cui-server/database"
+
+	"github.com/d0kur0/cui-server/graph/model"
 )
 
 var userCtxKey = &contextKey{"user"}
@@ -25,7 +25,8 @@ func Middleware() func(http.Handler) http.Handler {
 				return
 			}
 
-			user := database.ValidateAndGetUser(userToken)
+			userModel := database.UserModel{}
+			user := userModel.GetByToken(userToken)
 			ctx := context.WithValue(r.Context(), userCtxKey, user)
 
 			r = r.WithContext(ctx)
