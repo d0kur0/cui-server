@@ -90,9 +90,9 @@ func (u *UserModel) Create(userForCreate model.User) (createdUser *model.User, e
 
 	userForCreate.Password = string(hashOfPassword)
 
-	userCreateResult := db.Create(&userForCreate)
-	if userCreateResult.Error != nil {
-		log.Printf("error on SignUp db.Create(user); %s", err)
+	createResult := db.Create(&userForCreate)
+	if createResult.Error != nil {
+		log.Printf("error on UserModel.Create; %s", err)
 		return nil, errors.New("internal error")
 	}
 
